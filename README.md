@@ -2,7 +2,7 @@
 
 <table>
 <tr>
-<td valign="top">
+<td valign="top" width="300">
 
 <h2>About</h2>
 <p>Detect faces in a Photo.</p>
