@@ -8,8 +8,11 @@
 import SwiftUI
 import Vision
 
+import SwiftUI
+import Vision
+
 struct ContentView: View {
-    @StateObject private var viewModel = ViewModel()
+    @ObservedObject private var viewModel = ViewModel()
     
     var body: some View {
         VStack {
@@ -21,6 +24,19 @@ struct ContentView: View {
                 Image("test")
                     .resizable()
                     .scaledToFit()
+            }
+            ScrollView(.horizontal) {
+                HStack{
+                    ForEach(viewModel.faceThumbnails, id: \.self) { thumbnail in
+                        Image(uiImage: thumbnail)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 50, height: 50)
+                            .clipShape(Circle())
+                            .padding(4)
+                    }
+                    
+                }
             }
         }
         .padding()
@@ -35,36 +51,34 @@ struct ContentView: View {
 extension ContentView {
     class ViewModel: ObservableObject {
         @Published var outputImage: UIImage?
+        @Published var faceThumbnails: [UIImage] = []
 
+        
         func detectFaces(_ image: CGImage) async {
-            let request = VNDetectFaceRectanglesRequest() // Create a request for detecting face rectangles
-            let handler = VNImageRequestHandler(cgImage: image, options: [:]) // Create a handler for the image
+            let request = VNDetectFaceRectanglesRequest()
+            let handler = VNImageRequestHandler(cgImage: image, options: [:])
             
             do {
                 try handler.perform([request])
                 
                 if let results = request.results, !results.isEmpty {
                     outputImage = addFaceRectsToImage(results: results, in: image)
+                    generateFaceThumbnails(from: results, in: image)
                 }
             } catch {
-                // Handle any errors that occur during face detection
                 print("Error performing face detection: \(error)")
             }
         }
 
-        // Draw rectangles around detected faces on the image
         private func addFaceRectsToImage(results: [VNFaceObservation], in image: CGImage) -> UIImage? {
-            let uiImage = UIImage(cgImage: image) // Convert CGImage to UIImage
+            let uiImage = UIImage(cgImage: image)
             let imageSize = CGSize(width: uiImage.size.width, height: uiImage.size.height)
             
-            UIGraphicsBeginImageContext(imageSize) // Start a new image context
-            uiImage.draw(at: .zero) // Draw the original image
+            UIGraphicsBeginImageContext(imageSize)
+            uiImage.draw(at: .zero)
             
-            let context = UIGraphicsGetCurrentContext()! // Get the current graphics context
-            context.setStrokeColor(UIColor.red.cgColor) // Set the stroke color to red
-            context.setLineWidth(2.0) // Set the line width for the rectangles
+            let context = UIGraphicsGetCurrentContext()!
             
-            // Loop through all detected faces and draw rectangles around them
             for face in results {
                 let boundingBox = face.boundingBox
                 let scaledBox = CGRect(
@@ -86,15 +100,38 @@ extension ContentView {
                     height: radius * 2
                 )
                 
-                context.setStrokeColor(UIColor.white.cgColor)
+                context.setStrokeColor(UIColor(.white.opacity(0.8)).cgColor)
                 context.setLineWidth(5.0)
                 context.strokeEllipse(in: circleRect) // Draw the circle
+                
             }
             
-            let newImage = UIGraphicsGetImageFromCurrentImageContext() // Get the new image with rectangles
-            UIGraphicsEndImageContext() // End the image context
+            let newImage = UIGraphicsGetImageFromCurrentImageContext()
+            UIGraphicsEndImageContext()
             
-            return newImage // Return the image with face rectangles
+            return newImage
+        }
+
+        private func generateFaceThumbnails(from results: [VNFaceObservation], in image: CGImage) {
+            faceThumbnails.removeAll() // Clear any existing thumbnails
+            
+            let uiImage = UIImage(cgImage: image)
+            let imageSize = CGSize(width: uiImage.size.width, height: uiImage.size.height)
+            
+            for face in results {
+                let boundingBox = face.boundingBox
+                let scaledBox = CGRect(
+                    x: boundingBox.origin.x * imageSize.width,
+                    y: (1 - boundingBox.origin.y - boundingBox.size.height) * imageSize.height,
+                    width: boundingBox.size.width * imageSize.width,
+                    height: boundingBox.size.height * imageSize.height
+                )
+                
+                if let cgCroppedImage = uiImage.cgImage?.cropping(to: scaledBox) {
+                    let thumbnail = UIImage(cgImage: cgCroppedImage)
+                    faceThumbnails.append(thumbnail)
+                }
+            }
         }
     }
 }
@@ -102,6 +139,8 @@ extension ContentView {
 #Preview {
     ContentView()
 }
+
+
 
 
 /*
