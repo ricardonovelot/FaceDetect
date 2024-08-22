@@ -9,7 +9,7 @@
 
 </td>
 <td valign="top">
-<img src="https://github.com/user-attachments/assets/65c7be79-101d-48ac-8c42-35a9f4c378e9" width="500">
+<img src="https://github.com/user-attachments/assets/be0d957e-ce7d-42b9-a956-c45da370f05a" width="500">
 </td>
 </tr>
 </table>
